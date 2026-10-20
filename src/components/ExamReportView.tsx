@@ -6,6 +6,8 @@ import { ProofViewer } from './ProofViewer'
 import { KaTeXView } from './KaTeXView'
 import { CheckCircle2 } from 'lucide-react'
 
+import { ProblemSummaryCard } from './ProblemSummaryCard'
+
 interface ExamReportViewProps {
   variableCount: VariableCount
   variables: string[]
@@ -50,59 +52,14 @@ export const ExamReportView: React.FC<ExamReportViewProps> = ({
 
   return (
     <div className="exam-report-container">
-      <div className="exam-section-card">
-        <div className="exam-section-title">
-          <span className="exam-part-label">Đề bài</span>
-          <h3>Đề bài & Yêu cầu bài thi (Chuẩn KTDTS)</h3>
-        </div>
-        <div className="call-declaration-box">
-          <p className="call-line font-medium text-slate-800 dark:text-slate-100">
-            Cho hàm Boolean {variables.length} biến:
-          </p>
-          <div className="statement-math-box my-2">
-            <KaTeXView
-              math={
-                form === 'SOP'
-                  ? `Y(${variables.join(', ')}) = \\sum(${
-                      Object.entries(gridValues)
-                        .filter(([_, v]) => v === 1)
-                        .map(([k]) => k)
-                        .join(', ') || '\\emptyset'
-                    })${
-                      Object.entries(gridValues).some(([_, v]) => v === 'd')
-                        ? ` + d(${Object.entries(gridValues)
-                            .filter(([_, v]) => v === 'd')
-                            .map(([k]) => k)
-                            .join(', ')})`
-                        : ''
-                    }`
-                  : `Y(${variables.join(', ')}) = \\prod(${
-                      Object.entries(gridValues)
-                        .filter(([_, v]) => v === 0)
-                        .map(([k]) => k)
-                        .join(', ') || '\\emptyset'
-                    })${
-                      Object.entries(gridValues).some(([_, v]) => v === 'd')
-                        ? ` \\cdot D(${Object.entries(gridValues)
-                            .filter(([_, v]) => v === 'd')
-                            .map(([k]) => k)
-                            .join(', ')})`
-                        : ''
-                    }`
-              }
-              block={true}
-            />
-          </div>
-          <div className="statement-requirements-box mt-2">
-            <div className="req-title">Yêu cầu:</div>
-            <ul className="req-list">
-              <li><strong>a.</strong> Rút gọn hàm <em>Y</em> bằng bảng Karnaugh?</li>
-              <li><strong>b.</strong> Vẽ sơ đồ mạch sử dụng cổng LOGIC cơ bản (AND, OR, NOT)?</li>
-              <li><strong>c.</strong> Vẽ sơ đồ mạch chỉ sử dụng <strong>{targetGateText}</strong>?</li>
-            </ul>
-          </div>
-        </div>
-      </div>
+      <ProblemSummaryCard
+        problemType="cau_1"
+        variableCount={variableCount}
+        variables={variables}
+        form={form}
+        targetGateType={targetGateType}
+        gridValues={gridValues}
+      />
 
       <div className="exam-section-card">
         <div className="exam-section-title">

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import type { CellValue, OptimizationForm, TargetGateType, VariableCount } from '../types'
-import { parseNumberList } from '../utils/kmapSolver'
+import { getVariableNames, parseNumberList } from '../utils/kmapSolver'
 import { CheckCheck, RotateCcw } from 'lucide-react'
+import { ProblemSummaryCard } from './ProblemSummaryCard'
 
 interface InputPanelProps {
   variableCount: VariableCount
@@ -196,6 +197,17 @@ export const InputPanel: React.FC<InputPanelProps> = ({
           </div>
         </div>
       </div>
+
+      <ProblemSummaryCard
+        problemType="cau_1"
+        variableCount={variableCount}
+        variables={getVariableNames(variableCount)}
+        form={form}
+        targetGateType={targetGateType}
+        gridValues={gridValues}
+        compact={true}
+        title="Tổng hợp Đề bài hiện tại (Chuẩn KTDTS)"
+      />
     </div>
   )
 }

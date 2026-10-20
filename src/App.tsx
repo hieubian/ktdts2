@@ -32,12 +32,6 @@ import { CombinationalTruthTable } from './components/CombinationalTruthTable'
 import { HelpModal } from './components/HelpModal'
 import { KaTeXView } from './components/KaTeXView'
 import { CheckCircle2 } from 'lucide-react'
-import {
-  ProblemStatementCard,
-  CAU_2_PDF_PRESETS,
-  type Cau1PdfPreset,
-  type Cau2PdfPreset
-} from './components/ProblemStatementCard'
 
 export const App: React.FC = () => {
   const [currentProblem, setCurrentProblem] = useState<ExamProblemType>('cau_1')
@@ -50,20 +44,17 @@ export const App: React.FC = () => {
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false)
   const [isHelpOpen, setIsHelpOpen] = useState<boolean>(false)
 
-  const [activeCau1PresetId, setActiveCau1PresetId] = useState<string | null>('pdf_c1')
-  const [activeCau2PresetId, setActiveCau2PresetId] = useState<string | null>('pdf_c4')
-
   const [gridValues, setGridValues] = useState<Record<number, CellValue>>(() => {
     const initial: Record<number, CellValue> = {}
     for (let i = 0; i < 16; i++) initial[i] = 1
-    const c1Zeros = [0, 3, 5, 7, 8, 13, 15]
-    const c1Dc = [9, 11, 12]
+    const c1Zeros = [0, 2, 3, 9, 11, 13, 15]
+    const c1Dc = [4, 10, 14]
     c1Zeros.forEach((m) => { initial[m] = 0 })
     c1Dc.forEach((d) => { initial[d] = 'd' })
     return initial
   })
 
-  const [combSubtype, setCombSubtype] = useState<CombinationalSubtype>('code_converter')
+  const [combSubtype, setCombSubtype] = useState<CombinationalSubtype>('single_rule')
   const [combPolarity, setCombPolarity] = useState<LedPolarity>('cathode_common')
   const [combOutputPrefix, setCombOutputPrefix] = useState<'F' | 'G' | 'Y'>('F')
   const [sevenSegChars, setSevenSegChars] = useState<string>('56789AEdPH')
@@ -325,131 +316,6 @@ export const App: React.FC = () => {
     setGridValues(next)
   }
 
-  const handleSelectCau1PdfPreset = (preset: Cau1PdfPreset) => {
-    setActiveCau1PresetId(preset.id)
-    setVariableCount(preset.variableCount)
-    setForm(preset.form)
-    setTargetGateType(preset.targetGateType)
-
-    const total = 1 << preset.variableCount
-    const nextGrid: Record<number, CellValue> = {}
-    const defaultVal: CellValue = preset.form === 'SOP' ? 0 : 1
-    const targetVal: CellValue = preset.form === 'SOP' ? 1 : 0
-
-    for (let i = 0; i < total; i++) {
-      nextGrid[i] = defaultVal
-    }
-    for (const t of preset.terms) {
-      if (t < total) nextGrid[t] = targetVal
-    }
-    for (const d of preset.dontCares) {
-      if (d < total) nextGrid[d] = 'd'
-    }
-    setGridValues(nextGrid)
-  }
-
-  const handleSelectCau2PdfPreset = (preset: Cau2PdfPreset) => {
-    setActiveCau2PresetId(preset.id)
-    setCombSubtype(preset.subtype)
-    if (preset.outputPrefix) {
-      setCombOutputPrefix(preset.outputPrefix)
-    }
-
-    if (preset.id === 'pdf_c4') {
-      const mapping: Record<number, number[]> = {
-        0: [0, 0, 0, 0],
-        1: [0, 0, 0, 1],
-        2: [0, 1, 0, 0],
-        3: [0, 1, 0, 1],
-        4: [0, 1, 1, 1],
-        5: [1, 0, 0, 0],
-        6: [1, 0, 0, 1],
-        7: [1, 1, 0, 0],
-        8: [1, 1, 0, 1],
-        9: [1, 1, 1, 1]
-      }
-      const newRows: CombinationalRow[] = []
-      for (let dec = 0; dec <= 9; dec++) {
-        newRows.push({
-          id: `r-${dec}`,
-          decimal: dec,
-          inputBits: [(dec >> 3) & 1, (dec >> 2) & 1, (dec >> 1) & 1, dec & 1],
-          outputBits: mapping[dec],
-          isUnused: false
-        })
-      }
-      setCustomConverterRows(newRows)
-    } else if (preset.id === 'pdf_c5') {
-      const ringMap10: Record<number, number[]> = {
-        0: [0, 0, 1, 0],
-        1: [0, 1, 1, 0],
-        2: [0, 1, 1, 1],
-        3: [0, 1, 0, 1],
-        4: [0, 1, 0, 0],
-        5: [1, 1, 0, 0],
-        6: [1, 1, 0, 1],
-        7: [1, 1, 1, 1],
-        8: [1, 1, 1, 0],
-        9: [1, 0, 1, 0]
-      }
-      const newRows: CombinationalRow[] = []
-      for (let dec = 0; dec <= 9; dec++) {
-        newRows.push({
-          id: `ring-${dec}`,
-          decimal: dec,
-          inputBits: [(dec >> 3) & 1, (dec >> 2) & 1, (dec >> 1) & 1, dec & 1],
-          outputBits: ringMap10[dec],
-          isUnused: false
-        })
-      }
-      setCustomConverterRows(newRows)
-    } else if (preset.id === 'pdf_c6') {
-      const targetSet = new Set([3, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15])
-      const newRows: CombinationalRow[] = []
-      for (let i = 0; i < 16; i++) {
-        newRows.push({
-          id: `rule-${i}`,
-          decimal: i,
-          inputBits: [(i >> 3) & 1, (i >> 2) & 1, (i >> 1) & 1, i & 1],
-          outputBits: [targetSet.has(i) ? 1 : 0],
-          isUnused: false
-        })
-      }
-      setSingleRuleRows(newRows)
-    } else if (preset.id === 'pdf_c7') {
-      const targetSet = new Set([0, 2, 4, 5, 6, 8])
-      const newRows: CombinationalRow[] = []
-      for (let i = 0; i < 16; i++) {
-        if (i >= 10) {
-          newRows.push({
-            id: `rule-unused-${i}`,
-            decimal: i,
-            inputBits: [(i >> 3) & 1, (i >> 2) & 1, (i >> 1) & 1, i & 1],
-            outputBits: ['X'],
-            isUnused: true
-          })
-        } else {
-          newRows.push({
-            id: `rule-${i}`,
-            decimal: i,
-            inputBits: [(i >> 3) & 1, (i >> 2) & 1, (i >> 1) & 1, i & 1],
-            outputBits: [targetSet.has(i) ? 1 : 0],
-            isUnused: false
-          })
-        }
-      }
-      setSingleRuleRows(newRows)
-    } else if (preset.id === 'pdf_c8') {
-      setCombPolarity('anode_common')
-      setSevenSegChars('456789AbC')
-      setSelectedSegOutputs(['e', 'f', 'g'])
-    } else if (preset.id === 'pdf_c9') {
-      setCombPolarity('cathode_common')
-      setSevenSegChars('123456789A')
-      setSelectedSegOutputs(['a', 'b', 'c'])
-    }
-  }
-
   return (
     <div className="app-layout">
       <Navbar
@@ -465,47 +331,18 @@ export const App: React.FC = () => {
       <main className="main-content">
         {currentProblem === 'cau_1' ? (
           <>
-            <ProblemStatementCard
-              currentProblem="cau_1"
-              variableCount={variableCount}
-              variables={variables}
-              form={form}
-              targetGateType={targetGateType}
-              gridValues={gridValues}
-              onSelectCau1Preset={handleSelectCau1PdfPreset}
-              activeCau1PresetId={activeCau1PresetId}
-            />
-
             <div className="no-print">
               <InputPanel
                 variableCount={variableCount}
                 form={form}
                 targetGateType={targetGateType}
                 gridValues={gridValues}
-                onVariableCountChange={(v) => {
-                  handleVariableCountChange(v)
-                  setActiveCau1PresetId(null)
-                }}
-                onFormChange={(f) => {
-                  setForm(f)
-                  setActiveCau1PresetId(null)
-                }}
-                onTargetGateChange={(g) => {
-                  setTargetGateType(g)
-                  setActiveCau1PresetId(null)
-                }}
-                onApplyMinterms={(terms, dcs) => {
-                  handleApplyMinterms(terms, dcs)
-                  setActiveCau1PresetId(null)
-                }}
-                onClear={() => {
-                  handleClear()
-                  setActiveCau1PresetId(null)
-                }}
-                onSetAll={(v) => {
-                  handleSetAll(v)
-                  setActiveCau1PresetId(null)
-                }}
+                onVariableCountChange={handleVariableCountChange}
+                onFormChange={setForm}
+                onTargetGateChange={setTargetGateType}
+                onApplyMinterms={handleApplyMinterms}
+                onClear={handleClear}
+                onSetAll={handleSetAll}
               />
             </div>
 
@@ -630,62 +467,24 @@ export const App: React.FC = () => {
           </>
         ) : (
           <>
-            <ProblemStatementCard
-              currentProblem="cau_2"
-              combSubtype={combSubtype}
-              combPolarity={combPolarity}
-              combOutputPrefix={combOutputPrefix}
-              combInputVars={combInputVars}
-              combOutputVars={combOutputVars}
-              combAllRows={combAllRows}
-              sevenSegChars={sevenSegChars}
-              selectedSegOutputs={selectedSegOutputs}
-              onSelectCau2Preset={handleSelectCau2PdfPreset}
-              activeCau2PresetId={activeCau2PresetId}
-            />
-
             <div className="no-print">
               <CombinationalInputPanel
                 subtype={combSubtype}
-                onSubtypeChange={(st) => {
-                  setCombSubtype(st)
-                  setActiveCau2PresetId(null)
-                }}
+                onSubtypeChange={setCombSubtype}
                 outputPrefix={combOutputPrefix}
-                onOutputPrefixChange={(p) => {
-                  setCombOutputPrefix(p)
-                  setActiveCau2PresetId(null)
-                }}
+                onOutputPrefixChange={setCombOutputPrefix}
                 singleRuleRows={singleRuleRows}
-                onSingleRuleRowsChange={(rows) => {
-                  setSingleRuleRows(rows)
-                  setActiveCau2PresetId(null)
-                }}
+                onSingleRuleRowsChange={setSingleRuleRows}
                 converterRows={customConverterRows}
-                onConverterRowsChange={(rows) => {
-                  setCustomConverterRows(rows)
-                  setActiveCau2PresetId(null)
-                }}
+                onConverterRowsChange={setCustomConverterRows}
                 polarity={combPolarity}
-                onPolarityChange={(pol) => {
-                  setCombPolarity(pol)
-                  setActiveCau2PresetId(null)
-                }}
+                onPolarityChange={setCombPolarity}
                 sevenSegChars={sevenSegChars}
-                onSevenSegCharsChange={(chars) => {
-                  setSevenSegChars(chars)
-                  setActiveCau2PresetId(null)
-                }}
+                onSevenSegCharsChange={setSevenSegChars}
                 selectedOutputs={selectedSegOutputs}
-                onSelectedOutputsChange={(outs) => {
-                  setSelectedSegOutputs(outs)
-                  setActiveCau2PresetId(null)
-                }}
-                activePdfPresetId={activeCau2PresetId}
-                onSelectPresetId={(id) => {
-                  const p = CAU_2_PDF_PRESETS.find((x) => x.id === id)
-                  if (p) handleSelectCau2PdfPreset(p)
-                }}
+                onSelectedOutputsChange={setSelectedSegOutputs}
+                allRows={combAllRows}
+                outputVars={combOutputVars}
               />
             </div>
 
@@ -699,6 +498,7 @@ export const App: React.FC = () => {
                 outputsResults={combOutputsResults}
                 combinedCircuit={combCircuit}
                 onToggleOutputBit={handleCombToggleOutputBit}
+                sevenSegChars={sevenSegChars}
               />
             )}
 
