@@ -1,5 +1,5 @@
 import React from 'react'
-import { Moon, Printer, Sun } from 'lucide-react'
+import { Moon, Printer, Sun, HelpCircle, Cpu } from 'lucide-react'
 
 interface NavbarProps {
   currentProblem: 'cau_1' | 'cau_2'
@@ -17,126 +17,148 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   onTabChange,
   isDarkMode,
-  onToggleDarkMode
+  onToggleDarkMode,
+  onOpenHelp
 }) => {
   return (
-    <header className="navbar-container no-print">
-      <div className="navbar-content">
-        <div className="brand-group">
-          <span className="brand-title">hghktdts</span>
-          <div className="problem-segmented-control">
-            <button
-              type="button"
-              className={`problem-nav-btn ${currentProblem === 'cau_1' ? 'active' : ''}`}
-              onClick={() => {
-                onProblemChange('cau_1')
-                onTabChange('report')
-              }}
-            >
-              Câu 1: Rút gọn hàm Boolean
-            </button>
-            <button
-              type="button"
-              className={`problem-nav-btn ${currentProblem === 'cau_2' ? 'active' : ''}`}
-              onClick={() => {
-                onProblemChange('cau_2')
-                onTabChange('report')
-              }}
-            >
-              Câu 2: Thiết kế mạch tổ hợp
-            </button>
+    <header className="apple-navbar no-print">
+      <div className="apple-navbar-content">
+        {/* Brand Group */}
+        <div className="apple-brand-group">
+          <div className="apple-brand-logo">
+            <Cpu className="w-5 h-5 text-blue-500" />
+          </div>
+          <div className="apple-brand-text">
+            <span className="apple-brand-title">K-Resolve</span>
+            <span className="apple-brand-badge">KTDTS Apple Edition</span>
           </div>
         </div>
 
-        <nav className="nav-tabs-wrapper">
+        {/* Primary Problem Switcher (Segmented Capsule) */}
+        <div className="apple-problem-switcher">
+          <button
+            type="button"
+            className={`apple-switcher-btn ${currentProblem === 'cau_1' ? 'active' : ''}`}
+            onClick={() => {
+              onProblemChange('cau_1')
+              onTabChange('report')
+            }}
+          >
+            <span>Rút gọn hàm Boolean (Câu 1–3)</span>
+          </button>
+          <button
+            type="button"
+            className={`apple-switcher-btn ${currentProblem === 'cau_2' ? 'active' : ''}`}
+            onClick={() => {
+              onProblemChange('cau_2')
+              onTabChange('report')
+            }}
+          >
+            <span>Thiết kế mạch tổ hợp (Câu 4–9)</span>
+          </button>
+        </div>
+
+        {/* View Tabs */}
+        <nav className="apple-sub-tabs">
           {currentProblem === 'cau_1' ? (
             <>
               <button
                 type="button"
-                className={`nav-tab-btn ${activeTab === 'report' ? 'active' : ''}`}
+                className={`apple-sub-tab-btn ${activeTab === 'report' ? 'active' : ''}`}
                 onClick={() => onTabChange('report')}
               >
-                Bài Thi (a, b, c)
+                Bài làm a, b, c
               </button>
               <button
                 type="button"
-                className={`nav-tab-btn ${activeTab === 'kmap' ? 'active' : ''}`}
+                className={`apple-sub-tab-btn ${activeTab === 'kmap' ? 'active' : ''}`}
                 onClick={() => onTabChange('kmap')}
               >
                 Bìa K-Map
               </button>
               <button
                 type="button"
-                className={`nav-tab-btn ${activeTab === 'circuit_basic' ? 'active' : ''}`}
+                className={`apple-sub-tab-btn ${activeTab === 'circuit_basic' ? 'active' : ''}`}
                 onClick={() => onTabChange('circuit_basic')}
               >
-                Cổng Cơ Bản
+                Mạch cơ bản
               </button>
               <button
                 type="button"
-                className={`nav-tab-btn ${activeTab === 'circuit_target' ? 'active' : ''}`}
+                className={`apple-sub-tab-btn ${activeTab === 'circuit_target' ? 'active' : ''}`}
                 onClick={() => onTabChange('circuit_target')}
               >
-                Cổng Biến Đổi
+                Cổng biến đổi
               </button>
               <button
                 type="button"
-                className={`nav-tab-btn ${activeTab === 'truthtable' ? 'active' : ''}`}
+                className={`apple-sub-tab-btn ${activeTab === 'truthtable' ? 'active' : ''}`}
                 onClick={() => onTabChange('truthtable')}
               >
-                Bảng Chân Lý
+                Bảng chân lý
               </button>
             </>
           ) : (
             <>
               <button
                 type="button"
-                className={`nav-tab-btn ${activeTab === 'report' ? 'active' : ''}`}
+                className={`apple-sub-tab-btn ${activeTab === 'report' ? 'active' : ''}`}
                 onClick={() => onTabChange('report')}
               >
-                Bài Thi Trọn Vẹn
+                Bài làm trọn vẹn
               </button>
               <button
                 type="button"
-                className={`nav-tab-btn ${activeTab === 'truthtable' ? 'active' : ''}`}
+                className={`apple-sub-tab-btn ${activeTab === 'truthtable' ? 'active' : ''}`}
                 onClick={() => onTabChange('truthtable')}
               >
-                Bảng Trạng Thái
+                Bảng chuyển mã
               </button>
               <button
                 type="button"
-                className={`nav-tab-btn ${activeTab === 'kmap' ? 'active' : ''}`}
+                className={`apple-sub-tab-btn ${activeTab === 'kmap' ? 'active' : ''}`}
                 onClick={() => onTabChange('kmap')}
               >
                 Bìa Karnaugh
               </button>
               <button
                 type="button"
-                className={`nav-tab-btn ${activeTab === 'circuit_basic' ? 'active' : ''}`}
+                className={`apple-sub-tab-btn ${activeTab === 'circuit_basic' ? 'active' : ''}`}
                 onClick={() => onTabChange('circuit_basic')}
               >
-                Sơ Đồ Mạch
+                Sơ đồ mạch
               </button>
             </>
           )}
         </nav>
 
-        <div className="nav-right-actions">
+        {/* Right Side Actions */}
+        <div className="apple-nav-actions">
           <button
             type="button"
-            className="action-icon-btn"
+            className="apple-nav-icon-btn"
+            onClick={onOpenHelp}
+            title="Hướng dẫn & Triết lý giải"
+          >
+            <HelpCircle className="w-4 h-4" />
+          </button>
+
+          <button
+            type="button"
+            className="apple-nav-icon-btn"
             onClick={() => window.print()}
-            title="In / Lưu PDF"
+            title="In / Xuất PDF bài thi"
           >
             <Printer className="w-4 h-4" />
           </button>
+
           <button
             type="button"
-            className="action-icon-btn"
+            className="apple-nav-icon-btn"
             onClick={onToggleDarkMode}
-            title={isDarkMode ? 'Chuyển giao diện sáng' : 'Chuyển giao diện tối'}
+            title={isDarkMode ? 'Chuyển sang chế độ sáng' : 'Chuyển sang chế độ tối'}
           >
-            {isDarkMode ? <Sun className="w-4 h-4 text-amber-500" /> : <Moon className="w-4 h-4 text-slate-500" />}
+            {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
           </button>
         </div>
       </div>

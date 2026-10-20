@@ -1,54 +1,60 @@
 :root {
-  --font-main: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-apple: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", "Segoe UI", Roboto, sans-serif;
+  --font-mono: 'SF Mono', 'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace;
 
-  --bg-primary: #f8fafc;
-  --bg-secondary: #ffffff;
+  /* Apple Light Mode Palette */
+  --bg-primary: #f5f5f7;
+  --bg-secondary: rgba(255, 255, 255, 0.85);
   --bg-card: #ffffff;
-  --bg-card-hover: #f1f5f9;
-  --bg-input: #f8fafc;
-  --border-color: #e2e8f0;
-  --border-strong: #cbd5e1;
-  --border-focus: #2563eb;
+  --bg-card-hover: #fafafa;
+  --bg-input: #f2f2f7;
+  --border-color: rgba(0, 0, 0, 0.08);
+  --border-strong: rgba(0, 0, 0, 0.14);
+  --border-focus: #0071e3;
 
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #64748b;
+  --text-primary: #1d1d1f;
+  --text-secondary: #6e6e73;
+  --text-muted: #86868b;
 
-  --accent-primary: #2563eb;
-  --accent-primary-hover: #1d4ed8;
-  --accent-secondary: #0284c7;
-  --accent-success: #059669;
-  --accent-warning: #d97706;
-  --accent-danger: #dc2626;
+  --accent-primary: #0071e3;
+  --accent-primary-hover: #0077ed;
+  --accent-secondary: #2997ff;
+  --accent-success: #34c759;
+  --accent-warning: #ff9500;
+  --accent-danger: #ff3b30;
 
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
 
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.06), 0 2px 4px rgba(0, 0, 0, 0.02);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.04);
 }
 
 html.dark {
-  --bg-primary: #12141a;
-  --bg-secondary: #1a1d24;
-  --bg-card: #1a1d24;
-  --bg-card-hover: #222631;
-  --bg-input: #12141a;
-  --border-color: #2e3442;
-  --border-strong: #3e4659;
-  --border-focus: #3b82f6;
+  /* Apple OLED Dark Mode Palette */
+  --bg-primary: #000000;
+  --bg-secondary: rgba(28, 28, 30, 0.85);
+  --bg-card: #1c1c1e;
+  --bg-card-hover: #2c2c2e;
+  --bg-input: #2c2c2e;
+  --border-color: rgba(255, 255, 255, 0.1);
+  --border-strong: rgba(255, 255, 255, 0.18);
+  --border-focus: #2997ff;
 
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+  --text-primary: #f5f5f7;
+  --text-secondary: #a1a1a6;
+  --text-muted: #6e6e73;
 
-  --accent-primary: #3b82f6;
-  --accent-primary-hover: #2563eb;
-  --accent-secondary: #38bdf8;
-  --accent-success: #10b981;
-  --accent-warning: #f59e0b;
+  --accent-primary: #2997ff;
+  --accent-primary-hover: #0071e3;
+  --accent-secondary: #64d2ff;
+  --accent-success: #30d158;
+  --accent-warning: #ffd60a;
+  --accent-danger: #ff453a;
 }
 
 * {
@@ -58,15 +64,16 @@ html.dark {
 }
 
 body {
-  font-family: var(--font-main);
+  font-family: var(--font-apple);
   background-color: var(--bg-primary);
   color: var(--text-primary);
   line-height: 1.5;
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-button, input, select {
+button, input, select, textarea {
   font-family: inherit;
 }
 
@@ -75,6 +82,7 @@ button {
   border: none;
   outline: none;
   background: none;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 code, pre, .mono {
@@ -87,7 +95,7 @@ code, pre, .mono {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bg-primary);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -99,50 +107,18 @@ code, pre, .mono {
   background: var(--text-muted);
 }
 
+/* KaTeX tweaks for crisp Apple typography */
+.katex {
+  font-size: 1.05em !important;
+  text-rendering: auto;
+}
+
 @media print {
   body {
     background-color: #ffffff !important;
     color: #000000 !important;
   }
-
   .no-print {
     display: none !important;
-  }
-
-  .exam-report-container {
-    padding: 0 !important;
-    max-width: 100% !important;
-  }
-
-  .exam-section-card {
-    page-break-inside: avoid;
-    box-shadow: none !important;
-    border: 1px solid #cbd5e1 !important;
-    background: #ffffff !important;
-    color: #000000 !important;
-    margin-bottom: 24px !important;
-  }
-
-  .kmap-cell {
-    border: 1px solid #64748b !important;
-    color: #000000 !important;
-  }
-
-  .bus-wire {
-    stroke: #334155 !important;
-  }
-
-  .signal-wire {
-    stroke: #0f172a !important;
-  }
-
-  .gate-shape {
-    stroke: #0f172a !important;
-    fill: none !important;
-  }
-
-  .gate-bubble {
-    stroke: #0f172a !important;
-    fill: #ffffff !important;
   }
 }

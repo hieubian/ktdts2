@@ -33,6 +33,8 @@ export interface TransformationStep {
   ruleName?: string
   ruleFormula?: string
   latex: string
+  handwrittenLine?: string
+  note?: string
 }
 
 export interface CircuitNode {

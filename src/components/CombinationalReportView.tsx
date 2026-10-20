@@ -5,7 +5,6 @@ import { KMapGrid } from './KMapGrid'
 import { CircuitViewer } from './CircuitViewer'
 import { KaTeXView } from './KaTeXView'
 import { formatSubscript } from '../utils/circuitGenerator'
-import { ProblemSummaryCard } from './ProblemSummaryCard'
 
 interface CombinationalReportViewProps {
   subtype: CombinationalSubtype
@@ -16,7 +15,6 @@ interface CombinationalReportViewProps {
   outputsResults: CombinationalOutputResult[]
   combinedCircuit: CircuitDiagram
   onToggleOutputBit: (rowId: string, outIdx: number) => void
-  sevenSegChars?: string
 }
 
 export const CombinationalReportView: React.FC<CombinationalReportViewProps> = ({
@@ -27,8 +25,7 @@ export const CombinationalReportView: React.FC<CombinationalReportViewProps> = (
   rows,
   outputsResults,
   combinedCircuit,
-  onToggleOutputBit,
-  sevenSegChars = '456789AbC'
+  onToggleOutputBit
 }) => {
   const [hoveredGroup, setHoveredGroup] = useState<string | null>(null)
 
@@ -39,18 +36,6 @@ export const CombinationalReportView: React.FC<CombinationalReportViewProps> = (
 
   return (
     <div className="exam-report-container">
-      <ProblemSummaryCard
-        problemType="cau_2"
-        combSubtype={subtype}
-        combPolarity={polarity}
-        combInputVars={inputVars}
-        combOutputVars={outputVars}
-        combOutputPrefix={outputVars[0]?.startsWith('Y') ? 'Y' : outputVars[0]?.startsWith('G') ? 'G' : 'F'}
-        combRows={rows}
-        sevenSegChars={sevenSegChars}
-        selectedSegOutputs={isSevenSeg ? outputVars : undefined}
-      />
-
       <div className="exam-section-card">
         <div className="exam-section-title">
           <span className="exam-part-label">Bước 1</span>

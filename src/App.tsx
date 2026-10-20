@@ -13,13 +13,13 @@ import type {
 import { getVariableNames, solveKMap } from './utils/kmapSolver'
 import { generateTransformations } from './utils/algebraicTransformer'
 import {
-  formatSubscript,
   generateBasicCircuit,
   generateMultiOutputBasicCircuit,
   generateTargetGateCircuit
 } from './utils/circuitGenerator'
 import { parseSevenSegmentBits, type SegmentName } from './utils/sevenSegment'
 import { Navbar } from './components/Navbar'
+import { SmartEquationInput } from './components/SmartEquationInput'
 import { InputPanel } from './components/InputPanel'
 import { KMapGrid } from './components/KMapGrid'
 import { CircuitViewer } from './components/CircuitViewer'
@@ -32,9 +32,11 @@ import { CombinationalTruthTable } from './components/CombinationalTruthTable'
 import { HelpModal } from './components/HelpModal'
 import { KaTeXView } from './components/KaTeXView'
 import { CheckCircle2 } from 'lucide-react'
+import { type ExamPreset } from './utils/examPresets'
 
 export const App: React.FC = () => {
   const [currentProblem, setCurrentProblem] = useState<ExamProblemType>('cau_1')
+  const [activePresetId, setActivePresetId] = useState<string | undefined>('cau_1_pdf')
 
   const [variableCount, setVariableCount] = useState<VariableCount>(4)
   const [form, setForm] = useState<OptimizationForm>('POS')
@@ -44,13 +46,14 @@ export const App: React.FC = () => {
   const [isDarkMode, setIsDarkMode] = useState<boolean>(false)
   const [isHelpOpen, setIsHelpOpen] = useState<boolean>(false)
 
+  // Default state matches Câu 1 of the PDF: Y(A,B,C,D) = ∏(0,3,5,7,8,13,15) .D(9,11,12)
   const [gridValues, setGridValues] = useState<Record<number, CellValue>>(() => {
     const initial: Record<number, CellValue> = {}
     for (let i = 0; i < 16; i++) initial[i] = 1
-    const c1Zeros = [0, 2, 3, 9, 11, 13, 15]
-    const c1Dc = [4, 10, 14]
-    c1Zeros.forEach((m) => { initial[m] = 0 })
-    c1Dc.forEach((d) => { initial[d] = 'd' })
+    const zeros = [0, 3, 5, 7, 8, 13, 15]
+    const dcs = [9, 11, 12]
+    zeros.forEach((m) => { initial[m] = 0 })
+    dcs.forEach((d) => { initial[d] = 'd' })
     return initial
   })
 
@@ -118,6 +121,164 @@ export const App: React.FC = () => {
   const circuitTarget = useMemo(() => {
     return generateTargetGateCircuit(groups, variableCount, form, targetGateType, 'Y')
   }, [groups, variableCount, form, targetGateType])
+
+  const currentEquationString = useMemo(() => {
+    const activeMainCells = Object.entries(gridValues)
+      .filter(([, v]) => v === (form === 'SOP' ? 1 : 0))
+      .map(([k]) => Number(k))
+      .sort((a, b) => a - b)
+    const activeDcCells = Object.entries(gridValues)
+      .filter(([, v]) => v === 'd')
+      .map(([k]) => Number(k))
+      .sort((a, b) => a - b)
+
+    if (form === 'POS') {
+      return `Y(${variables.join(',')}) = ∏(${activeMainCells.join(',')})${
+        activeDcCells.length > 0 ? ` .D(${activeDcCells.join(',')})` : ''
+      }`
+    }
+    return `Y(${variables.join(',')}) = ∑(${activeMainCells.join(',')})${
+      activeDcCells.length > 0 ? ` + d(${activeDcCells.join(',')})` : ''
+    }`
+  }, [gridValues, form, variables])
+
+  const handleApplyParsedEquation = (parsed: {
+    variableCount: VariableCount
+    variables: string[]
+    form: OptimizationForm
+    terms: number[]
+    dontCares: number[]
+    targetGateType?: TargetGateType
+  }) => {
+    setActivePresetId(undefined)
+    setCurrentProblem('cau_1')
+    setVariableCount(parsed.variableCount)
+    setForm(parsed.form)
+    if (parsed.targetGateType) {
+      setTargetGateType(parsed.targetGateType)
+    }
+
+    const total = 1 << parsed.variableCount
+    const next: Record<number, CellValue> = {}
+    const defaultVal: CellValue = parsed.form === 'SOP' ? 0 : 1
+    const targetVal: CellValue = parsed.form === 'SOP' ? 1 : 0
+
+    for (let i = 0; i < total; i++) {
+      next[i] = defaultVal
+    }
+    for (const t of parsed.terms) {
+      if (t < total) next[t] = targetVal
+    }
+    for (const d of parsed.dontCares) {
+      if (d < total) next[d] = 'd'
+    }
+    setGridValues(next)
+  }
+
+  const handleSelectPreset = (preset: ExamPreset) => {
+    setActivePresetId(preset.id)
+    if (preset.problemType === 'cau_1') {
+      setCurrentProblem('cau_1')
+      setActiveTab('report')
+      const vCount = preset.variableCount || 4
+      const pForm = preset.form || 'POS'
+      const pTarget = preset.targetGateType || 'nand_2'
+      setVariableCount(vCount)
+      setForm(pForm)
+      setTargetGateType(pTarget)
+
+      const total = 1 << vCount
+      const next: Record<number, CellValue> = {}
+      const defaultVal: CellValue = pForm === 'SOP' ? 0 : 1
+      const targetVal: CellValue = pForm === 'SOP' ? 1 : 0
+      for (let i = 0; i < total; i++) next[i] = defaultVal
+      if (preset.terms) {
+        preset.terms.forEach((t) => { if (t < total) next[t] = targetVal })
+      }
+      if (preset.dontCares) {
+        preset.dontCares.forEach((d) => { if (d < total) next[d] = 'd' })
+      }
+      setGridValues(next)
+    } else {
+      setCurrentProblem('cau_2')
+      setActiveTab('report')
+      if (preset.combSubtype) setCombSubtype(preset.combSubtype)
+
+      if (preset.combConverterType === '5211') {
+        const mapping5211: Record<number, number[]> = {
+          0: [0, 0, 0, 0],
+          1: [0, 0, 0, 1],
+          2: [0, 1, 0, 0],
+          3: [0, 1, 0, 1],
+          4: [0, 1, 1, 1],
+          5: [1, 0, 0, 0],
+          6: [1, 0, 0, 1],
+          7: [1, 1, 0, 0],
+          8: [1, 1, 0, 1],
+          9: [1, 1, 1, 1]
+        }
+        setCustomConverterRows(
+          Array.from({ length: 10 }, (_, dec) => ({
+            id: `r-${dec}`,
+            decimal: dec,
+            inputBits: [(dec >> 3) & 1, (dec >> 2) & 1, (dec >> 1) & 1, dec & 1],
+            outputBits: mapping5211[dec],
+            isUnused: false
+          }))
+        )
+      } else if (preset.combConverterType === 'excess3_cyclic') {
+        const mappingExcess3Cyclic: Record<number, number[]> = {
+          0: [0, 0, 1, 0],
+          1: [0, 1, 1, 0],
+          2: [0, 1, 1, 1],
+          3: [0, 1, 0, 1],
+          4: [0, 1, 0, 0],
+          5: [1, 1, 0, 0],
+          6: [1, 1, 0, 1],
+          7: [1, 1, 1, 1],
+          8: [1, 1, 1, 0],
+          9: [1, 0, 1, 0]
+        }
+        setCustomConverterRows(
+          Array.from({ length: 10 }, (_, dec) => ({
+            id: `r-${dec}`,
+            decimal: dec,
+            inputBits: [(dec >> 3) & 1, (dec >> 2) & 1, (dec >> 1) & 1, dec & 1],
+            outputBits: mappingExcess3Cyclic[dec],
+            isUnused: false
+          }))
+        )
+      } else if (preset.combRuleMode === 'moreOnes') {
+        setSingleRuleRows(
+          Array.from({ length: 16 }, (_, i) => {
+            const ones = ((i >> 3) & 1) + ((i >> 2) & 1) + ((i >> 1) & 1) + (i & 1)
+            return {
+              id: `rule-${i}`,
+              decimal: i,
+              inputBits: [(i >> 3) & 1, (i >> 2) & 1, (i >> 1) & 1, i & 1],
+              outputBits: [ones >= 2 ? 1 : 0],
+              isUnused: false
+            }
+          })
+        )
+      } else if (preset.combRuleMode === 'mod2or5') {
+        const mod2or5 = new Set([0, 2, 4, 5, 6, 8, 10, 12, 14, 15])
+        setSingleRuleRows(
+          Array.from({ length: 16 }, (_, i) => ({
+            id: `rule-${i}`,
+            decimal: i,
+            inputBits: [(i >> 3) & 1, (i >> 2) & 1, (i >> 1) & 1, i & 1],
+            outputBits: [mod2or5.has(i) ? 1 : 0],
+            isUnused: false
+          }))
+        )
+      } else if (preset.combSubtype === 'seven_segment') {
+        if (preset.combSegPolarity) setCombPolarity(preset.combSegPolarity)
+        if (preset.combSegChars) setSevenSegChars(preset.combSegChars)
+        if (preset.combSegOutputs) setSelectedSegOutputs(preset.combSegOutputs)
+      }
+    }
+  }
 
   const combInputVars = useMemo(() => ['A', 'B', 'C', 'D'], [])
 
@@ -256,6 +417,7 @@ export const App: React.FC = () => {
   }
 
   const handleVariableCountChange = (newCount: VariableCount) => {
+    setActivePresetId(undefined)
     setVariableCount(newCount)
     const total = 1 << newCount
     setGridValues((prev) => {
@@ -268,6 +430,7 @@ export const App: React.FC = () => {
   }
 
   const handleCellToggle = (minterm: number) => {
+    setActivePresetId(undefined)
     setGridValues((prev) => {
       const current = prev[minterm] ?? 0
       let next: CellValue = 0
@@ -279,6 +442,7 @@ export const App: React.FC = () => {
   }
 
   const handleApplyMinterms = (terms: number[], dontCares: number[]) => {
+    setActivePresetId(undefined)
     const total = 1 << variableCount
     const next: Record<number, CellValue> = {}
     const defaultVal: CellValue = form === 'SOP' ? 0 : 1
@@ -298,6 +462,7 @@ export const App: React.FC = () => {
   }
 
   const handleClear = () => {
+    setActivePresetId(undefined)
     const total = 1 << variableCount
     const next: Record<number, CellValue> = {}
     const defaultVal: CellValue = form === 'SOP' ? 0 : 1
@@ -308,6 +473,7 @@ export const App: React.FC = () => {
   }
 
   const handleSetAll = (val: CellValue) => {
+    setActivePresetId(undefined)
     const total = 1 << variableCount
     const next: Record<number, CellValue> = {}
     for (let i = 0; i < total; i++) {
@@ -329,8 +495,23 @@ export const App: React.FC = () => {
       />
 
       <main className="main-content">
+        {/* Apple Spotlight Smart Hero Input */}
+        <div className="no-print">
+          <SmartEquationInput
+            currentEquation={currentEquationString}
+            form={form}
+            variableCount={variableCount}
+            variables={variables}
+            targetGateType={targetGateType}
+            onApplyParsedEquation={handleApplyParsedEquation}
+            onSelectPreset={handleSelectPreset}
+            activePresetId={activePresetId}
+          />
+        </div>
+
         {currentProblem === 'cau_1' ? (
           <>
+            {/* Quick Config Drawer */}
             <div className="no-print">
               <InputPanel
                 variableCount={variableCount}
@@ -338,14 +519,21 @@ export const App: React.FC = () => {
                 targetGateType={targetGateType}
                 gridValues={gridValues}
                 onVariableCountChange={handleVariableCountChange}
-                onFormChange={setForm}
-                onTargetGateChange={setTargetGateType}
+                onFormChange={(newForm) => {
+                  setActivePresetId(undefined)
+                  setForm(newForm)
+                }}
+                onTargetGateChange={(newGate) => {
+                  setActivePresetId(undefined)
+                  setTargetGateType(newGate)
+                }}
                 onApplyMinterms={handleApplyMinterms}
                 onClear={handleClear}
                 onSetAll={handleSetAll}
               />
             </div>
 
+            {/* Main Solutions Tabs */}
             {activeTab === 'report' && (
               <ExamReportView
                 variableCount={variableCount}
@@ -365,13 +553,16 @@ export const App: React.FC = () => {
             )}
 
             {activeTab === 'kmap' && (
-              <div className="exam-section-card">
-                <div className="exam-section-title">
-                  <span className="exam-part-label">Câu a</span>
-                  <h3>Bìa Karnaugh & Các Vòng Khoanh Tối Ưu Y({variables.join(', ')})</h3>
+              <div className="apple-solution-card">
+                <div className="apple-card-header">
+                  <div className="apple-card-badge">Câu a</div>
+                  <h2 className="apple-card-title">Bìa Karnaugh & Các Vòng Khoanh Tối Ưu Y({variables.join(', ')})</h2>
                 </div>
-                <div className="exam-kmap-layout">
-                  <div className="exam-kmap-pane">
+                <div className="apple-kmap-layout">
+                  <div className="apple-kmap-pane">
+                    <div className="kmap-instruction">
+                      Bìa Karnaugh {variables.length} biến ({variables.join(', ')}). Bấm ô để đổi giá trị (0 → 1 → d).
+                    </div>
                     <KMapGrid
                       variableCount={variableCount}
                       gridValues={gridValues}
@@ -382,42 +573,42 @@ export const App: React.FC = () => {
                       onGroupHover={setHoveredGroup}
                     />
                   </div>
-                  <div className="exam-groups-pane">
-                    <h4 className="exam-subtitle">Chi tiết các nhóm khoanh:</h4>
-                    <div className="exam-groups-list">
+                  <div className="apple-groups-pane">
+                    <div className="apple-group-summary-header">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                      <span>Chi tiết các nhóm khoanh tối ưu:</span>
+                    </div>
+                    <div className="apple-groups-list">
                       {groups.map((g) => (
                         <div
                           key={g.id}
-                          className={`exam-group-row ${hoveredGroup === g.id ? 'active-hover' : ''}`}
+                          className={`apple-group-row ${hoveredGroup === g.id ? 'active-hover' : ''}`}
                           onMouseEnter={() => setHoveredGroup(g.id)}
                           onMouseLeave={() => setHoveredGroup(null)}
                         >
-                          <div className="exam-group-pill" style={{ backgroundColor: g.color }}>
+                          <div className="group-color-pill" style={{ backgroundColor: g.color }}>
                             <KaTeXView math={g.label} />
                           </div>
-                          <div className="exam-group-content">
-                            <div className="exam-group-formula">
+                          <div className="group-details">
+                            <div className="group-formula">
                               <span className="font-semibold text-slate-800 dark:text-slate-100">
                                 <KaTeXView math={g.label} /> = Nhóm các ô ({g.cells.join(', ')}) ={' '}
                               </span>
                               <KaTeXView math={g.termLatex} />
                             </div>
                             {g.eliminatedVariables.length > 0 && (
-                              <div className="exam-group-note">
-                                Loại bỏ được biến: {g.eliminatedVariables.join(', ')} | Giữ lại biến: {g.keptVariables.join(', ')}
+                              <div className="group-meta">
+                                Triệt tiêu: {g.eliminatedVariables.join(', ')} • Giữ lại: {g.keptVariables.join(', ')}
                               </div>
                             )}
                           </div>
                         </div>
                       ))}
                     </div>
-                    <div className="exam-final-result-box">
-                      <div className="result-label">
-                        <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                        <span>Hàm tối thiểu:</span>
-                      </div>
-                      <div className="result-formula">
-                        <KaTeXView math={`Y_{(${variables.join(', ')})} = ${simplifiedLatex}`} block={true} />
+                    <div className="apple-final-box">
+                      <span className="final-label">Biểu thức tối thiểu:</span>
+                      <div className="final-formula">
+                        <KaTeXView math={`Y(${variables.join(', ')}) = ${simplifiedLatex}`} block={true} />
                       </div>
                     </div>
                   </div>
@@ -426,27 +617,31 @@ export const App: React.FC = () => {
             )}
 
             {activeTab === 'circuit_basic' && (
-              <div className="exam-section-card">
-                <div className="exam-section-title">
-                  <span className="exam-part-label">Câu b</span>
-                  <h3>Sơ đồ mạch sử dụng cổng LOGIC cơ bản (AND, OR, NOT)</h3>
+              <div className="apple-solution-card">
+                <div className="apple-card-header">
+                  <div className="apple-card-badge">Câu b</div>
+                  <h2 className="apple-card-title">Sơ đồ mạch sử dụng cổng LOGIC cơ bản (AND, OR, NOT)</h2>
                 </div>
-                <CircuitViewer
-                  diagram={circuitBasic}
-                  title="Mạch Logic cơ bản"
-                  subtitle={`Biểu thức thực hiện: Y = ${simplifiedPlain}`}
-                />
+                <div className="apple-circuit-wrapper">
+                  <CircuitViewer
+                    diagram={circuitBasic}
+                    title="Mạch Logic cơ bản"
+                    subtitle={`Biểu thức thực hiện: Y = ${simplifiedPlain}`}
+                  />
+                </div>
               </div>
             )}
 
             {activeTab === 'circuit_target' && (
-              <div className="exam-section-card">
-                <div className="exam-section-title">
-                  <span className="exam-part-label">Câu c</span>
-                  <h3>Biến Đổi Đại Số Boole & Sơ Đồ Mạch Chuyên Dụng</h3>
+              <div className="apple-solution-card">
+                <div className="apple-card-header">
+                  <div className="apple-card-badge">Câu c</div>
+                  <h2 className="apple-card-title">Biến Đổi Đại Số Boole & Sơ Đồ Mạch Chuyên Dụng</h2>
                 </div>
-                <ProofViewer steps={transformationSteps} funcName="Y" />
-                <div style={{ marginTop: '20px' }}>
+                <div className="apple-proof-section">
+                  <ProofViewer steps={transformationSteps} funcName="Y" />
+                </div>
+                <div className="apple-circuit-wrapper" style={{ marginTop: '16px' }}>
                   <CircuitViewer
                     diagram={circuitTarget}
                     title={`Sơ đồ mạch chỉ sử dụng ${targetGateType.toUpperCase().replace('_', ' ')}`}
@@ -457,16 +652,23 @@ export const App: React.FC = () => {
             )}
 
             {activeTab === 'truthtable' && (
-              <TruthTableView
-                variableCount={variableCount}
-                gridValues={gridValues}
-                form={form}
-                onCellToggle={handleCellToggle}
-              />
+              <div className="apple-solution-card">
+                <div className="apple-card-header">
+                  <div className="apple-card-badge">Bảng chân lý</div>
+                  <h2 className="apple-card-title">Bảng chân lý hàm Boolean Y({variables.join(', ')})</h2>
+                </div>
+                <TruthTableView
+                  variableCount={variableCount}
+                  gridValues={gridValues}
+                  form={form}
+                  onCellToggle={handleCellToggle}
+                />
+              </div>
             )}
           </>
         ) : (
           <>
+            {/* Combinational Problems (Câu 4 - 9 in PDF) */}
             <div className="no-print">
               <CombinationalInputPanel
                 subtype={combSubtype}
@@ -483,8 +685,6 @@ export const App: React.FC = () => {
                 onSevenSegCharsChange={setSevenSegChars}
                 selectedOutputs={selectedSegOutputs}
                 onSelectedOutputsChange={setSelectedSegOutputs}
-                allRows={combAllRows}
-                outputVars={combOutputVars}
               />
             </div>
 
@@ -498,15 +698,14 @@ export const App: React.FC = () => {
                 outputsResults={combOutputsResults}
                 combinedCircuit={combCircuit}
                 onToggleOutputBit={handleCombToggleOutputBit}
-                sevenSegChars={sevenSegChars}
               />
             )}
 
             {activeTab === 'truthtable' && (
-              <div className="exam-section-card">
-                <div className="exam-section-title">
-                  <span className="exam-part-label">Bước 2</span>
-                  <h3>{combAllRows.some((r) => r.isUnused) ? 'Bảng Trạng Thái & Trạng Thái Cấm' : 'Bảng Trạng Thái (Bảng Chân Lý)'}</h3>
+              <div className="apple-solution-card">
+                <div className="apple-card-header">
+                  <div className="apple-card-badge">Bảng trạng thái</div>
+                  <h2 className="apple-card-title">Bảng chuyển mã & Bảng trạng thái đầy đủ</h2>
                 </div>
                 <CombinationalTruthTable
                   inputVars={combInputVars}
@@ -520,70 +719,26 @@ export const App: React.FC = () => {
             )}
 
             {activeTab === 'kmap' && (
-              <div className="exam-section-card">
-                <div className="exam-section-title">
-                  <span className="exam-part-label">Bước 3</span>
-                  <h3>{combOutputVars.length === 1 ? 'Bìa Karnaugh Rút Gọn Cho Hàm Đầu Ra' : 'Bìa Karnaugh Rút Gọn Cho Từng Đầu Ra'}</h3>
+              <div className="apple-solution-card">
+                <div className="apple-card-header">
+                  <div className="apple-card-badge">Bìa Karnaugh đa đầu ra</div>
+                  <h2 className="apple-card-title">Bìa Karnaugh cho từng hàm đầu ra ({combOutputVars.join(', ')})</h2>
                 </div>
-                <div className="multi-kmap-grid-container">
-                  {combOutputsResults.map((res) => (
-                    <div key={res.name} className="single-output-kmap-card">
-                      <div className="output-kmap-header">
-                        <span className="output-badge">
-                          <KaTeXView math={res.name} />
-                        </span>
-                        <h4>
-                          Bìa Karnaugh cho hàm <KaTeXView math={`${res.name}(${combInputVars.join(', ')})`} />
-                        </h4>
-                      </div>
-
-                      <div className="kmap-with-groups-row">
-                        <div className="kmap-left-pane">
-                          <KMapGrid
-                            variableCount={4}
-                            gridValues={res.gridValues}
-                            groups={res.groups}
-                            form="SOP"
-                            hoveredGroup={hoveredGroup}
-                            onCellToggle={() => {}}
-                            onGroupHover={setHoveredGroup}
-                          />
-                        </div>
-
-                        <div className="kmap-right-pane">
-                          <span className="groups-title">Các nhóm khoanh tối ưu:</span>
-                          <div className="groups-compact-list">
-                            {res.groups.length === 0 ? (
-                              <div className="empty-group-text">Hàm đồng nhất = 0</div>
-                            ) : (
-                              res.groups.map((g) => (
-                                <div
-                                  key={g.id}
-                                  className={`compact-group-item ${hoveredGroup === g.id ? 'active' : ''}`}
-                                  onMouseEnter={() => setHoveredGroup(g.id)}
-                                  onMouseLeave={() => setHoveredGroup(null)}
-                                >
-                                  <span className="group-color-dot" style={{ backgroundColor: g.color }} />
-                                  <span className="group-label-bold">
-                                    <KaTeXView math={g.label} /> = gộp ({g.cells.join(', ')}) ={' '}
-                                  </span>
-                                  <KaTeXView math={g.termLatex} />
-                                </div>
-                              ))
-                            )}
-                          </div>
-
-                          <div className="output-final-result-card">
-                            <div className="result-title-row">
-                              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                              <span>Phương trình tối thiểu:</span>
-                            </div>
-                            <div className="result-math">
-                              <KaTeXView math={`${res.name} = ${res.simplifiedLatex}`} block={true} />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                <div className="space-y-6" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  {combOutputsResults.map((out) => (
+                    <div key={out.name} className="apple-sub-card">
+                      <h4 className="font-semibold text-blue-600 dark:text-blue-400 mb-2">
+                        Bìa Karnaugh cho hàm {out.name} = {out.simplifiedPlain}
+                      </h4>
+                      <KMapGrid
+                        variableCount={4}
+                        gridValues={out.gridValues}
+                        groups={out.groups}
+                        form="SOP"
+                        hoveredGroup={null}
+                        onCellToggle={() => {}}
+                        onGroupHover={() => {}}
+                      />
                     </div>
                   ))}
                 </div>
@@ -591,16 +746,18 @@ export const App: React.FC = () => {
             )}
 
             {activeTab === 'circuit_basic' && (
-              <div className="exam-section-card">
-                <div className="exam-section-title">
-                  <span className="exam-part-label">Bước 4</span>
-                  <h3>Sơ Đồ Mạch Tổ Hợp Chuyển Mã</h3>
+              <div className="apple-solution-card">
+                <div className="apple-card-header">
+                  <div className="apple-card-badge">Sơ đồ mạch</div>
+                  <h2 className="apple-card-title">Sơ đồ mạch tổ hợp hoàn chỉnh</h2>
                 </div>
-                <CircuitViewer
-                  diagram={combCircuit}
-                  title={`Sơ đồ mạch tổ hợp cho các hàm ${combOutputVars.map(formatSubscript).join(', ')}`}
-                  subtitle={`Thực hiện các phương trình tối ưu từ các đường bus ${combInputVars.join(', ')}`}
-                />
+                <div className="apple-circuit-wrapper">
+                  <CircuitViewer
+                    diagram={combCircuit}
+                    title="Mạch tổ hợp đa đầu ra"
+                    subtitle={`Các đầu ra: ${combOutputVars.join(', ')}`}
+                  />
+                </div>
               </div>
             )}
           </>

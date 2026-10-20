@@ -1,8 +1,7 @@
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import type { TransformationStep } from '../types'
 import { KaTeXView } from './KaTeXView'
-import { FormattedMathText } from './FormattedMathText'
-import { Check, ChevronDown, ChevronUp, Copy } from 'lucide-react'
+import { Check, Copy, FileText } from 'lucide-react'
 
 interface ProofViewerProps {
   steps: TransformationStep[]
@@ -10,86 +9,125 @@ interface ProofViewerProps {
 }
 
 export const ProofViewer: React.FC<ProofViewerProps> = ({ steps, funcName = 'Y' }) => {
-  const [isOpen, setIsOpen] = useState<boolean>(false)
-  const [copiedIdx, setCopiedIdx] = useState<number | null>(null)
+  const [copied, setCopied] = useState<boolean>(false)
 
-  const copyStepLatex = (latex: string, idx: number) => {
-    navigator.clipboard.writeText(latex)
-    setCopiedIdx(idx)
-    setTimeout(() => setCopiedIdx(null), 2000)
+  // Construct complete continuous vertically-aligned LaTeX block (\begin{aligned} ... \end{aligned})
+  const alignedLatex = useMemo(() => {
+    if (!steps || steps.length === 0) return `${funcName} = 0`
+
+    const lines = steps.map((step, idx) => {
+      let eqPart = step.handwrittenLine || step.latex
+      // Ensure first line has "Y &=" and subsequent lines have "&="
+      if (idx === 0) {
+        if (eqPart.includes('=')) {
+          const parts = eqPart.split('=')
+          eqPart = `${parts[0].trim()} &= ${parts.slice(1).join('=').trim()}`
+        } else {
+          eqPart = `${funcName} &= ${eqPart}`
+        }
+      } else {
+        if (eqPart.startsWith('=')) {
+          eqPart = `&= ${eqPart.substring(1).trim()}`
+        } else if (eqPart.includes('=')) {
+          const parts = eqPart.split('=')
+          eqPart = `&= ${parts.slice(1).join('=').trim()}`
+        } else {
+          eqPart = `&= ${eqPart}`
+        }
+      }
+
+      const noteText = step.note ? `\\quad \\text{--- ${step.note}}` : ''
+      return `${eqPart} ${noteText}`
+    })
+
+    return `\\begin{aligned}\n${lines.join(' \\\\\n')}\n\\end{aligned}`
+  }, [steps, funcName])
+
+  // Plain text for copying
+  const plainTextCopy = useMemo(() => {
+    if (!steps || steps.length === 0) return ''
+    return steps
+      .map((step) => {
+        const line = step.handwrittenLine || step.latex
+        const note = step.note ? `    # ${step.note}` : ''
+        return `${line}${note}`
+      })
+      .join('\n')
+  }, [steps])
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(plainTextCopy)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
   }
 
   const finalStep = steps[steps.length - 1]
-  const cascadeStep = steps.find(
-    (s) => (s.latex.includes('S_{12}') || s.latex.includes('P_{12}')) && s !== finalStep
-  )
 
   return (
-    <div className="proof-viewer-card">
-      <div className="proof-summary-box">
-        <div className="proof-summary-left">
-          <span className="summary-tag">Biểu thức sau biến đổi</span>
-          <div className="summary-math">
-            <KaTeXView math={finalStep ? finalStep.latex : `${funcName} = 0`} />
+    <div className="apple-handwritten-card">
+      <div className="apple-handwritten-header">
+        <div className="header-left">
+          <div className="handwritten-icon-badge">
+            <FileText className="w-4 h-4 text-blue-500" />
           </div>
-          {cascadeStep && (
-            <div className="summary-cascade-sub">
-              <span className="summary-cascade-label">Hệ tín hiệu:</span>
-              <KaTeXView math={cascadeStep.latex} />
-            </div>
-          )}
+          <div>
+            <h3 className="handwritten-title">Trình bày bài thi viết tay (Chuẩn chấm điểm)</h3>
+            <p className="handwritten-subtitle">
+              Biến đổi trực tiếp liên tục bằng chuỗi dấu bằng (=) dọc xuống dòng, không dùng biến trung gian.
+            </p>
+          </div>
         </div>
 
         <button
           type="button"
-          className="steps-toggle-btn"
-          onClick={() => setIsOpen((prev) => !prev)}
+          className="apple-copy-btn"
+          onClick={handleCopy}
+          title="Sao chép toàn bộ lời giải viết tay"
         >
-          {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          <span>{isOpen ? 'Thu gọn' : 'Xem các bước'}</span>
+          {copied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+          <span>{copied ? 'Đã sao chép' : 'Sao chép bài giải'}</span>
         </button>
       </div>
 
-      {isOpen && (
-        <div className="steps-detail-container">
-          <div className="proof-steps-container">
-            {steps.map((step, idx) => {
-              const isCopied = copiedIdx === idx
+      {/* Main Ruled Exam Sheet */}
+      <div className="apple-exam-sheet">
+        <div className="sheet-margin-line" />
+        <div className="sheet-content">
+          <div className="aligned-math-container">
+            <KaTeXView math={alignedLatex} block={true} />
+          </div>
 
-              return (
-                <div key={idx} className="step-card">
-                  <div className="step-card-header">
-                    <div className="step-card-header-left">
-                      <div className="step-badge">Bước {idx + 1}</div>
-                      <h4 className="step-title">{step.title}</h4>
-                    </div>
-                    <button
-                      type="button"
-                      className="step-copy-btn"
-                      onClick={() => copyStepLatex(step.latex, idx)}
-                      title="Sao chép LaTeX"
-                    >
-                      {isCopied ? (
-                        <Check className="w-3.5 h-3.5 text-emerald-600" />
-                      ) : (
-                        <Copy className="w-3.5 h-3.5 text-slate-400" />
-                      )}
-                      <span>{isCopied ? 'Đã sao chép' : 'Copy'}</span>
-                    </button>
-                  </div>
-
-                  {step.description && (
-                    <p className="step-description">
-                      <FormattedMathText text={step.description} />
-                    </p>
-                  )}
-
-                  <div className="step-math-box">
-                    <KaTeXView math={step.latex} block={true} />
-                  </div>
+          {/* Line by Line Breakdown with Explanatory Notes */}
+          <div className="handwritten-rows-list">
+            {steps.map((step, idx) => (
+              <div key={idx} className="handwritten-row">
+                <div className="row-index">Dòng {idx + 1}</div>
+                <div className="row-math">
+                  <KaTeXView math={step.handwrittenLine || step.latex} />
                 </div>
-              )
-            })}
+                {step.note && (
+                  <div className="row-note">
+                    <span className="note-dash">↳</span>
+                    <span>{step.note}</span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Final Submission Formula Box */}
+      {finalStep && (
+        <div className="handwritten-final-box">
+          <span className="final-badge">Biểu thức kết luận nộp bài:</span>
+          <div className="final-math">
+            <KaTeXView
+              math={`${funcName} = ${
+                (finalStep.handwrittenLine || finalStep.latex).replace(/^.*?=\s*/, '')
+              }`}
+              block={true}
+            />
           </div>
         </div>
       )}
